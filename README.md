@@ -4,6 +4,6 @@
 
 # Chạy project
 
-fastapi dev .FastAPI/app/main.py
+fastapi dev /app/main.py
 
 
