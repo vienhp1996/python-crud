@@ -6,4 +6,8 @@
 
 fastapi dev /app/main.py
 
+hoặc để tự reload
+
+uvicorn app.main:app --reload
+
 
