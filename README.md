@@ -4,10 +4,10 @@
 
 # Chạy project
 
-fastapi dev /app/main.py
-
-hoặc để tự reload
-
 uvicorn app.main:app --reload
+
+# Link api
+
+http://127.0.0.1:8000/docs
 
 
