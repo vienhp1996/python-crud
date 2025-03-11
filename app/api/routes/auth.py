@@ -80,15 +80,26 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
     """
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=get_message("email_not_found", request),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     if not user or not user.verify_password(form_data.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=get_message("incorrect_credentials", request),
             headers={"WWW-Authenticate": "Bearer"},
         )
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
     access_token = create_access_token(
-        data={"sub": user.email, "id": str(user.id)},  # Chuyển user.id về chuỗi nếu là UUID
+        data={"email": user.email, "id": str(user.id)},  # Chuyển user.id về chuỗi nếu là UUID
         expires_delta=access_token_expires
     )
+
     return {"access_token": access_token, "token_type": "bearer"}
