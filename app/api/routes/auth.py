@@ -11,6 +11,7 @@ from app.models.user import User
 from app.api.schemas.user import UserCreate, UserResponse
 from app.api.schemas.auth import Token
 from app.core.locale import get_message
+from app.utils.db import get_db
 
 router = APIRouter()
 
@@ -18,12 +19,6 @@ router = APIRouter()
 SECRET_KEY = "your-secret-key"  # Thay đổi thành một chuỗi bí mật an toàn
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-
-# Dependency lấy session DB
-async def get_db() -> AsyncSession:
-    async with async_session() as session:
-        yield session
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
@@ -88,7 +83,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if not user or not user.verify_password(form_data.password):
+    if not user.verify_password(form_data.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=get_message("incorrect_credentials", request),
@@ -98,7 +93,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
     access_token = create_access_token(
-        data={"email": user.email, "id": str(user.id)},  # Chuyển user.id về chuỗi nếu là UUID
+        data={"sub": user.email, "id": str(user.id)},  # Chuyển user.id về chuỗi nếu là UUID
         expires_delta=access_token_expires
     )
 

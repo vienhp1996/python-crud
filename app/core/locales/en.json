@@ -1,5 +1,6 @@
 {
   "email_already_registered": "Email already registered",
   "incorrect_credentials": "Incorrect password",
-  "email_not_found": "Email does not exist"
+  "email_not_found": "Email does not exist",
+  "insufficient_permissions": "Your account does not have sufficient permissions to perform this action"
 }
