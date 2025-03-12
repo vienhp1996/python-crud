@@ -59,7 +59,6 @@ async def read_user(user_id: UUID, db: AsyncSession = Depends(get_db)):
 async def create_user(
         user_in: UserCreate,
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_active_superuser)
 ):
     # Kiểm tra trùng email
     result = await db.execute(select(User).where(User.email == user_in.email))
@@ -91,10 +90,8 @@ async def update_user(
         user_id: UUID,
         user_in: UserUpdate,
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_active_superuser)
 ):
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalars().first()
+    user = await fetch_one(db, User, id=user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -118,8 +115,7 @@ async def update_user(
 # Xóa user
 @router.delete("/{user_id}", response_model=dict)
 async def delete_user(user_id: UUID, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalars().first()
+    user = await fetch_one(db, User, id=user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 

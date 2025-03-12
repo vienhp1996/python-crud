@@ -1,17 +1,14 @@
-from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
-from jose import JWTError, jwt
+from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from datetime import datetime, timedelta
 
-from app.core.database import async_session  # Dependency kết nối DB
 from app.models.user import User
 from app.api.schemas.user import UserCreate, UserResponse
 from app.api.schemas.auth import Token
 from app.core.locale import get_message
-from app.utils.db import get_db
+from app.utils.db import get_db, fetch_one
 
 router = APIRouter()
 
@@ -40,8 +37,7 @@ async def register(
         db: AsyncSession = Depends(get_db)
 ):
     # Kiểm tra email có tồn tại hay chưa
-    result = await db.execute(select(User).where(User.email == user_in.email))
-    existing_user = result.scalars().first()
+    existing_user = await fetch_one(db, User, email=user_in.email)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -77,8 +73,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
     - Sử dụng OAuth2PasswordRequestForm, trong đó `username` chính là email.
     - Xác thực mật khẩu và trả về access token nếu hợp lệ.
     """
-    result = await db.execute(select(User).where(User.email == form_data.username))
-    user = result.scalars().first()
+    user = await fetch_one(db, User, email=form_data.username)
 
     if not user:
         raise HTTPException(
