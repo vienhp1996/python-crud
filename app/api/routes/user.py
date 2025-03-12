@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from sqlalchemy import asc
 from uuid import UUID
 from typing import List, Optional
@@ -61,8 +60,7 @@ async def create_user(
         db: AsyncSession = Depends(get_db),
 ):
     # Kiểm tra trùng email
-    result = await db.execute(select(User).where(User.email == user_in.email))
-    existing_user = result.scalars().first()
+    existing_user = await fetch_one(db, User, email=user_in.email)
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
