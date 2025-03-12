@@ -56,7 +56,11 @@ async def read_user(user_id: UUID, db: AsyncSession = Depends(get_db)):
 
 # Tạo user mới: hash mật khẩu trước khi lưu
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+async def create_user(
+        user_in: UserCreate,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_superuser)
+):
     # Kiểm tra trùng email
     result = await db.execute(select(User).where(User.email == user_in.email))
     existing_user = result.scalars().first()
@@ -69,10 +73,17 @@ async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
         is_active=user_in.is_active,
         is_superuser=user_in.is_superuser
     )
-    # Hash mật khẩu và lưu vào trường hashed_password
+    # Hash mật khẩu
     user.set_password(user_in.password)
 
     db.add(user)
+    # Flush để đảm bảo user.id được gán (nếu chưa được tự động gán khi khởi tạo)
+    await db.flush()
+
+    # Cập nhật created_by và updated_by dựa trên id của người dùng hiện hành (current_user)
+    user.created_by = str(current_user.id)
+    user.updated_by = str(current_user.id)
+
     await db.commit()
     await db.refresh(user)
     return user
@@ -80,7 +91,12 @@ async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
 
 # Cập nhật thông tin user (có thể cập nhật cả password nếu có)
 @router.put("/{user_id}", response_model=UserResponse)
-async def update_user(user_id: UUID, user_in: UserUpdate, db: AsyncSession = Depends(get_db)):
+async def update_user(
+        user_id: UUID,
+        user_in: UserUpdate,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_superuser)
+):
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalars().first()
     if not user:
@@ -96,6 +112,9 @@ async def update_user(user_id: UUID, user_in: UserUpdate, db: AsyncSession = Dep
         user.is_superuser = user_in.is_superuser
     if user_in.password is not None:
         user.set_password(user_in.password)
+
+    # Cập nhật updated_by dựa trên id của người dùng hiện hành
+    user.updated_by = str(current_user.id)
 
     db.add(user)
     await db.commit()
