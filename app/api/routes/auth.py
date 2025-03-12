@@ -34,32 +34,36 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 
 @router.post("/register", response_model=UserResponse, tags=["auth"])
-async def register(user_in: UserCreate, request: Request, db: AsyncSession = Depends(get_db)):
-    """
-    Đăng ký tài khoản mới:
-    - Kiểm tra xem email đã tồn tại hay chưa.
-    - Nếu đã tồn tại, trả về thông báo lỗi theo ngôn ngữ (locale).
-    """
+async def register(
+        user_in: UserCreate,
+        request: Request,
+        db: AsyncSession = Depends(get_db)
+):
+    # Kiểm tra email có tồn tại hay chưa
     result = await db.execute(select(User).where(User.email == user_in.email))
     existing_user = result.scalars().first()
     if existing_user:
-        # Lấy thông báo lỗi từ file locale dựa theo header Accept-Language
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=get_message("email_already_registered", request)
         )
 
-    # Tiếp tục quá trình tạo user...
+    # Tạo user mới
     user = User(
         email=user_in.email,
         full_name=user_in.full_name,
         is_active=user_in.is_active,
         is_superuser=user_in.is_superuser
     )
-    # Hash mật khẩu (ví dụ: gọi user.set_password(user_in.password))
     user.set_password(user_in.password)
-
     db.add(user)
+    # Flush để đảm bảo user.id được gán (nếu chưa được gán ngay lúc khởi tạo)
+    await db.flush()
+
+    # Gán created_by và updated_by với id của chính user vừa đăng ký
+    user.created_by = str(user.id)
+    user.updated_by = str(user.id)
+
     await db.commit()
     await db.refresh(user)
     return user
