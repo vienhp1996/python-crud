@@ -80,10 +80,6 @@ async def create_user(
     # Flush để đảm bảo user.id được gán (nếu chưa được tự động gán khi khởi tạo)
     await db.flush()
 
-    # Cập nhật created_by và updated_by dựa trên id của người dùng hiện hành (current_user)
-    user.created_by = str(current_user.id)
-    user.updated_by = str(current_user.id)
-
     await db.commit()
     await db.refresh(user)
     return user
@@ -112,9 +108,6 @@ async def update_user(
         user.is_superuser = user_in.is_superuser
     if user_in.password is not None:
         user.set_password(user_in.password)
-
-    # Cập nhật updated_by dựa trên id của người dùng hiện hành
-    user.updated_by = str(current_user.id)
 
     db.add(user)
     await db.commit()

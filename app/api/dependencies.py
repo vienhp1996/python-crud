@@ -4,10 +4,10 @@ from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.core.database import async_session
 from app.core.locale import get_message
 from app.models.user import User
 from app.utils.db import get_db
+from app.utils.context import current_user_id_ctx  # Import biến context
 
 # Định nghĩa OAuth2 scheme, tokenUrl phải khớp với endpoint login
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
@@ -38,6 +38,10 @@ async def get_current_user(
     user = result.scalars().first()
     if user is None:
         raise credentials_exception
+
+    # Lưu current user id vào context variable
+    current_user_id_ctx.set(user.id)
+
     return user
 
 
