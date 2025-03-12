@@ -1,8 +1,9 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import async_session
+from sqlalchemy import Row, RowMapping
+from typing import Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, Row, RowMapping
-from typing import Any, List, Type, Sequence
+from sqlalchemy import select
+from typing import Any, List, Type
 
 
 async def get_db() -> AsyncSession:
@@ -18,15 +19,6 @@ async def fetch_one(db: AsyncSession, model: Type[Any], **filters) -> Any:
     query = select(model).filter_by(**filters)
     result = await db.execute(query)
     return result.scalars().first()
-
-
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from typing import Any, List, Type
-
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from typing import Any, List, Type
 
 
 async def fetch_many(
