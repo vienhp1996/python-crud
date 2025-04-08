@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Cấu hình chuỗi kết nối:
 # Lưu ý: "postgresql+asyncpg" chỉ định sử dụng driver asyncpg
@@ -14,3 +14,6 @@ async_session = sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False
 )
+
+# ✅ Khai báo Base dùng cho tất cả model
+Base = declarative_base()

@@ -1,11 +1,11 @@
 import uuid
 from sqlalchemy import Column, String, Boolean
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import relationship
 from passlib.context import CryptContext
 from app.models.mixins import AuditMixin
 
-Base = declarative_base()
+from app.core.database import Base
 
 # Cấu hình context cho việc hash mật khẩu
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -20,6 +20,9 @@ class User(AuditMixin, Base):
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
     hashed_password = Column(String, nullable=False)  # Lưu mật khẩu đã được hash
+
+    # ✅ Quan hệ 1-Nhiều: 1 user → nhiều task
+    tasks = relationship("Task", back_populates="user", cascade="all, delete-orphan")
 
     def set_password(self, password: str):
         """Hash mật khẩu và lưu vào trường hashed_password."""

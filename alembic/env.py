@@ -13,7 +13,8 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Import metadata của model
-from app.models.user import Base  # Giả sử tất cả các model đều được đăng ký trong Base
+from app.core.database import Base  # ✅ Dùng Base gốc
+from app.models import *  # ✅ Đảm bảo model được import để Alembic nhận biết
 
 target_metadata = Base.metadata
 
