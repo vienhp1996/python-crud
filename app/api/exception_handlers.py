@@ -1,6 +1,9 @@
 from fastapi import Request, FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def register_exception_handlers(app: FastAPI):
@@ -18,8 +21,8 @@ def register_exception_handlers(app: FastAPI):
 
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
-        # Xử lý lỗi chung
+        logger.exception(f"Unhandled exception: {exc}")
         return JSONResponse(
             status_code=500,
-            content={"detail": str(exc)}
+            content={"detail": f"Lỗi: {exc}"},
         )

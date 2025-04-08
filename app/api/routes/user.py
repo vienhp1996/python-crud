@@ -11,7 +11,7 @@ from app.utils.db import get_db, fetch_all, fetch_one, fetch_many
 
 router = APIRouter(
     prefix="/users",
-    tags=["users"],
+    tags=["Users"],
     dependencies=[Depends(get_current_active_superuser)]  # Dependency được áp dụng toàn cục
 )
 
@@ -74,7 +74,7 @@ async def create_user(
     user.set_password(user_in.password)
 
     db.add(user)
-    # Flush để đảm bảo user.id được gán (nếu chưa được tự động gán khi khởi tạo)
+    # gọi Flush nếu cần user.id để xử lý các phần liên quan
     await db.flush()
 
     await db.commit()

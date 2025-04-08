@@ -1,0 +1,156 @@
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
+from typing import List, Optional
+from app.models.user import User
+from app.core.locale import get_message
+from app.api.dependencies import get_current_user, get_current_active_superuser
+
+from app.api.schemas.task import (
+    TaskCreate,
+    TaskUpdate,
+    TaskResponse,
+    TaskScoreInput,
+)
+from app.models.task import Task
+from app.utils.db import get_db, fetch_all, fetch_one, fetch_many
+
+router = APIRouter(prefix="/tasks", tags=["Tasks"], dependencies=[Depends(get_current_user)])
+
+
+# ✅ Tạo task
+@router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
+async def create_task(request: Request, task_in: TaskCreate, db: AsyncSession = Depends(get_db)):
+    user = await db.get(User, task_in.user_id)
+    if not user:
+        raise HTTPException(status_code=400, detail=get_message("account_not_found", request))
+
+    task = Task(**task_in.model_dump())
+    db.add(task)
+
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+# ✅ Lấy danh sách task
+@router.get("/", response_model=List[TaskResponse])
+async def list_tasks(
+        db: AsyncSession = Depends(get_db),
+        page_number: int = Query(1, ge=0),
+        page_size: int = Query(10, gt=0),
+        task_id: Optional[str] = Query(None),
+        title: Optional[str] = Query(None),
+        description: Optional[str] = Query(None),
+        user_id: Optional[str] = Query(None),
+        is_completed: Optional[bool] = Query(None),
+        score: Optional[int] = Query(None, ge=0, le=10),
+):
+    filters = []
+    if task_id is not None:
+        try:
+            parsed_task_id = UUID(task_id)
+            filters.append(Task.id == parsed_task_id)
+        except ValueError:
+            return []  # task_id không hợp lệ
+    if title is not None:
+        # Sử dụng ilike để hỗ trợ tìm kiếm không phân biệt chữ hoa chữ thường
+        filters.append(Task.title.ilike(f"%{title}%"))
+    if description is not None:
+        filters.append(Task.description.ilike(f"%{description}%"))
+    if user_id is not None:
+        try:
+            valid_uuid = UUID(user_id)
+            filters.append(Task.user == valid_uuid)
+        except ValueError:
+            return []  # user_id không hợp lệ
+    if is_completed is not None:
+        filters.append(Task.is_completed == is_completed)
+    if score is not None:
+        filters.append(Task.score == score)
+
+    if page_number == 0:
+        offset = None
+        limit = None
+    else:
+        offset = (page_number - 1) * page_size
+        limit = page_size
+
+    result = await fetch_many(
+        db=db,
+        model=Task,
+        filters=filters,
+        limit=limit,
+        offset=offset
+    )
+
+    return result
+
+
+# ✅ Lấy task theo ID
+@router.get("/{task_id}", response_model=TaskResponse)
+async def get_task(task_id: UUID, db: AsyncSession = Depends(get_db)):
+    task = await db.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
+# ✅ Cập nhật task
+@router.put("/{task_id}", response_model=TaskResponse)
+async def update_task(task_id: UUID, task_in: TaskUpdate, db: AsyncSession = Depends(get_db)):
+    task = await db.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    for key, value in task_in.dict(exclude_unset=True).items():
+        setattr(task, key, value)
+
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+# ✅ Xóa task
+@router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT,
+               dependencies=[Depends(get_current_active_superuser)])
+async def delete_task(task_id: UUID, db: AsyncSession = Depends(get_db)):
+    task = await db.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    await db.delete(task)
+    await db.commit()
+    return
+
+
+# ✅ Hoàn thành task
+@router.patch("/complete/{task_id}", response_model=TaskResponse)
+async def complete_task(task_id: UUID, db: AsyncSession = Depends(get_db)):
+    task = await db.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task.is_completed = True
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+# ✅ Chấm điểm task (yêu cầu is_completed = True)
+@router.patch("/score/{task_id}", response_model=TaskResponse, dependencies=[Depends(get_current_active_superuser)])
+async def score_task(
+        task_id: UUID,
+        input_data: TaskScoreInput,
+        db: AsyncSession = Depends(get_db),
+):
+    task = await db.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if not task.is_completed:
+        raise HTTPException(status_code=400, detail="Task must be completed before scoring")
+
+    task.score = input_data.score
+    await db.commit()
+    await db.refresh(task)
+    return task
