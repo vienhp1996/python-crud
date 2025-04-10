@@ -93,16 +93,12 @@ async def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if user_in.email is not None:
-        user.email = user_in.email
     if user_in.full_name is not None:
         user.full_name = user_in.full_name
     if user_in.is_active is not None:
         user.is_active = user_in.is_active
     if user_in.is_superuser is not None:
         user.is_superuser = user_in.is_superuser
-    if user_in.password is not None:
-        user.set_password(user_in.password)
 
     db.add(user)
     await db.commit()

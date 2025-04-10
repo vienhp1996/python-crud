@@ -18,9 +18,6 @@ class TaskCreate(TaskBase):
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    user_id: Optional[UUID] = None
-    is_completed: Optional[bool] = None
-    score: Optional[int] = Field(default=None, ge=0, le=10)
 
 
 class TaskScoreInput(BaseModel):

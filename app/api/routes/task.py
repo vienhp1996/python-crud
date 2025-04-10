@@ -26,6 +26,10 @@ async def create_task(request: Request, task_in: TaskCreate, db: AsyncSession = 
         raise HTTPException(status_code=400, detail=get_message("account_not_found", request))
 
     task = Task(**task_in.model_dump())
+
+    task.created_by = str(user.id)
+    task.updated_by = str(user.id)
+
     db.add(task)
 
     await db.commit()
@@ -90,7 +94,7 @@ async def list_tasks(
 # ✅ Lấy task theo ID
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(task_id: UUID, db: AsyncSession = Depends(get_db)):
-    task = await db.get(Task, task_id)
+    task = await fetch_one(db, Task, id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
@@ -103,7 +107,7 @@ async def update_task(task_id: UUID, task_in: TaskUpdate, db: AsyncSession = Dep
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    for key, value in task_in.dict(exclude_unset=True).items():
+    for key, value in task_in.model_dump(exclude_unset=True).items():
         setattr(task, key, value)
 
     await db.commit()
