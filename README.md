@@ -17,6 +17,10 @@
 - Hoàn thành: chỉ có task của bản thân mới có thể hoàn thành
 - Đánh giá: chỉ có thể đánh giá Task đã hoàn thành, cần quyền quản lý và check qua get_current_active_superuser
 
+# Hỗ trợ đã ngôn ngữ (VI,EN)
+
+- Client gửi ngôn ngữ qua key accept-language ở header
+
 # Kích hoạt môi trường ảo cho Python
 
 . .FastAPI/bin/activate
