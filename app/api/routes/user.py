@@ -1,19 +1,27 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import asc
 from uuid import UUID
 from typing import List, Optional
-
+from app.core.locale import get_message
 from app.api.dependencies import get_current_active_superuser
 from app.models.user import User
 from app.api.schemas.user import UserCreate, UserUpdate, UserResponse
-from app.utils.db import get_db, fetch_all, fetch_one, fetch_many
+from app.utils.db import get_db, fetch_one, fetch_many
 
 router = APIRouter(
     prefix="/users",
     tags=["Users"],
     dependencies=[Depends(get_current_active_superuser)]  # Dependency được áp dụng toàn cục
 )
+
+
+# ✅ lấy user theo ID hoặc raise 404
+async def get_user_or_404(user_id: UUID, db: AsyncSession, request: Request) -> User:
+    user = await fetch_one(db, User, id=user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail=get_message("account_not_found", request))
+    return user
 
 
 # Lấy danh sách user (chỉ superuser mới được truy cập)
@@ -46,23 +54,24 @@ async def read_users(
 
 # Lấy thông tin 1 user theo id
 @router.get("/{user_id}", response_model=UserResponse)
-async def read_user(user_id: UUID, db: AsyncSession = Depends(get_db)):
-    user = await fetch_one(db, User, id=user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+async def read_user(request: Request, user_id: UUID, db: AsyncSession = Depends(get_db)):
+    user = await get_user_or_404(user_id, db, request)
+
     return user
 
 
 # Tạo user mới: hash mật khẩu trước khi lưu
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
+        request: Request,
         user_in: UserCreate,
         db: AsyncSession = Depends(get_db),
 ):
     # Kiểm tra trùng email
     existing_user = await fetch_one(db, User, email=user_in.email)
+
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail=get_message("email_already_registered", request))
 
     user = User(
         email=user_in.email,
@@ -85,13 +94,12 @@ async def create_user(
 # Cập nhật thông tin user (có thể cập nhật cả password nếu có)
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
+        request: Request,
         user_id: UUID,
         user_in: UserUpdate,
         db: AsyncSession = Depends(get_db),
 ):
-    user = await fetch_one(db, User, id=user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    user = await get_user_or_404(user_id, db, request)
 
     if user_in.full_name is not None:
         user.full_name = user_in.full_name
@@ -108,11 +116,9 @@ async def update_user(
 
 # Xóa user
 @router.delete("/{user_id}", response_model=dict)
-async def delete_user(user_id: UUID, db: AsyncSession = Depends(get_db)):
-    user = await fetch_one(db, User, id=user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+async def delete_user(request: Request, user_id: UUID, db: AsyncSession = Depends(get_db)):
+    user = await get_user_or_404(user_id, db, request)
 
     await db.delete(user)
     await db.commit()
-    return {"detail": "User deleted successfully"}
+    return {"detail": get_message("account_deleted", request)}

@@ -3,5 +3,9 @@
   "incorrect_credentials": "Mật khẩu không chính xác",
   "email_not_found": "Email không tồn tại",
   "insufficient_permissions": "Tài khoản của bạn không đủ quyền thao tác",
-  "account_not_found": "Tài khoản không tồn tại, vui lòng kiểm tra lại"
+  "account_not_found": "Tài khoản không tồn tại, vui lòng kiểm tra lại",
+  "job_not_found": "Công việc ko tồn tại",
+  "job_not_assigned_to_you": "Công việc này không phải của bạn, không thể hoàn thành",
+  "job_not_completed_no_review": "Công việc chưa hoàn thành, không thể đánh giá",
+  "account_deleted": "Đã xoá tài khoản"
 }

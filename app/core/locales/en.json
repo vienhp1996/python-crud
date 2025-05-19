@@ -3,5 +3,9 @@
   "incorrect_credentials": "Incorrect password",
   "email_not_found": "Email does not exist",
   "insufficient_permissions": "Your account does not have sufficient permissions to perform this action",
-  "account_not_found": "Account does not exist, please check again"
+  "account_not_found": "Account does not exist, please check again",
+  "job_not_found": "Job does not exist",
+  "job_not_assigned_to_you": "This job is not assigned to you and cannot be completed",
+  "job_not_completed_no_review": "Job not completed, cannot be reviewed",
+  "account_deleted": "Account deleted"
 }

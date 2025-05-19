@@ -13,9 +13,16 @@ from app.api.schemas.task import (
     TaskScoreInput,
 )
 from app.models.task import Task
-from app.utils.db import get_db, fetch_all, fetch_one, fetch_many
+from app.utils.db import get_db, fetch_one, fetch_many
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"], dependencies=[Depends(get_current_user)])
+
+
+async def get_task_or_404(db: AsyncSession, task_id: UUID, request: Request) -> Task:
+    task = await fetch_one(db, Task, id=task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail=get_message("job_not_found", request))
+    return task
 
 
 # ✅ Tạo task
@@ -101,19 +108,15 @@ async def list_tasks(
 
 # ✅ Lấy task theo ID
 @router.get("/{task_id}", response_model=TaskResponse)
-async def get_task(task_id: UUID, db: AsyncSession = Depends(get_db)):
-    task = await fetch_one(db, Task, id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+async def get_task(request: Request, task_id: UUID, db: AsyncSession = Depends(get_db)):
+    task = await get_task_or_404(db, task_id, request)
     return task
 
 
 # ✅ Cập nhật task
 @router.put("/{task_id}", response_model=TaskResponse)
-async def update_task(task_id: UUID, task_in: TaskUpdate, db: AsyncSession = Depends(get_db)):
-    task = await fetch_one(db, Task, id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+async def update_task(request: Request, task_id: UUID, task_in: TaskUpdate, db: AsyncSession = Depends(get_db)):
+    task = await get_task_or_404(db, task_id, request)
 
     for key, value in task_in.model_dump(exclude_unset=True).items():
         setattr(task, key, value)
@@ -126,10 +129,8 @@ async def update_task(task_id: UUID, task_in: TaskUpdate, db: AsyncSession = Dep
 # ✅ Xóa task
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT,
                dependencies=[Depends(get_current_active_superuser)])
-async def delete_task(task_id: UUID, db: AsyncSession = Depends(get_db)):
-    task = await fetch_one(db, Task, id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+async def delete_task(request: Request, task_id: UUID, db: AsyncSession = Depends(get_db)):
+    task = await get_task_or_404(db, task_id, request)
 
     await db.delete(task)
     await db.commit()
@@ -138,14 +139,12 @@ async def delete_task(task_id: UUID, db: AsyncSession = Depends(get_db)):
 
 # ✅ Hoàn thành task
 @router.put("/complete/{task_id}", response_model=TaskResponse)
-async def complete_task(task_id: UUID, db: AsyncSession = Depends(get_db),
+async def complete_task(request: Request, task_id: UUID, db: AsyncSession = Depends(get_db),
                         current_user: User = Depends(get_current_user)):
-    task = await fetch_one(db, Task, id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+    task = await get_task_or_404(db, task_id, request)
 
     if current_user.id != task.user_id:
-        raise HTTPException(status_code=404, detail="Công việc này không phải của bạn, không thể hoàn thành")
+        raise HTTPException(status_code=404, detail=get_message("job_not_assigned_to_you", request))
 
     task.is_completed = True
 
@@ -157,15 +156,15 @@ async def complete_task(task_id: UUID, db: AsyncSession = Depends(get_db),
 # ✅ Chấm điểm task (yêu cầu is_completed = True)
 @router.put("/score/{task_id}", response_model=TaskResponse, dependencies=[Depends(get_current_active_superuser)])
 async def score_task(
+        request: Request,
         task_id: UUID,
         input_data: TaskScoreInput,
         db: AsyncSession = Depends(get_db),
 ):
-    task = await fetch_one(db, Task, id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+    task = await get_task_or_404(db, task_id, request)
+
     if not task.is_completed:
-        raise HTTPException(status_code=400, detail="Task must be completed before scoring")
+        raise HTTPException(status_code=400, detail=get_message("job_not_completed_no_review", request))
 
     task.score = input_data.score
     await db.commit()
