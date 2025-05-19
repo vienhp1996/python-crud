@@ -5,6 +5,7 @@ from typing import List, Optional
 from app.models.user import User
 from app.core.locale import get_message
 from app.api.dependencies import get_current_user, get_current_active_superuser
+from app.api.routes.user import get_user_or_404
 
 from app.api.schemas.task import (
     TaskCreate,
@@ -28,9 +29,7 @@ async def get_task_or_404(db: AsyncSession, task_id: UUID, request: Request) -> 
 # ✅ Tạo task
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(request: Request, task_in: TaskCreate, db: AsyncSession = Depends(get_db)):
-    user = await db.get(User, task_in.user_id)
-    if not user:
-        raise HTTPException(status_code=400, detail=get_message("account_not_found", request))
+    user = await get_user_or_404(task_in.user_id, db, request)
 
     task = Task(**task_in.model_dump())
 
