@@ -113,7 +113,7 @@ async def get_task(request: Request, task_id: UUID, db: AsyncSession = Depends(g
 
 
 # ✅ Cập nhật task
-@router.put("/{task_id}", response_model=TaskResponse)
+@router.put("/{task_id}", response_model=TaskResponse, dependencies=[Depends(get_current_active_superuser)])
 async def update_task(request: Request, task_id: UUID, task_in: TaskUpdate, db: AsyncSession = Depends(get_db)):
     task = await get_task_or_404(db, task_id, request)
 
